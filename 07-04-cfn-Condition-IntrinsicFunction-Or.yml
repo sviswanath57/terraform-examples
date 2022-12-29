@@ -1,0 +1,81 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  
+  EnvironmentName:
+    Description: Select the Environment Name
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+      - qa
+    ConstraintDescription: must be development or prod or qa
+Mappings:
+  MyRegionMap:
+    us-east-1:
+      HVM64: ami-0cff7528ff583bf9a
+      
+    us-west-1:
+      HVM64: ami-0d9858aa3c6322f73
+  
+  MyEnvironmentMap:
+    dev:
+      InstanceType: t2.micro
+    prod:
+      InstanceType: t2.small
+    qa:
+      InstanceType: t2.micro
+    
+
+  
+
+Conditions:
+  CreateEIPForProd: !Equals [!Ref EnvironmentName, prod]
+  CreateDevSecurityGroup: !Not [{Condition: CreateProdSecurityGroup}]
+  CreateProdSecurityGroup: !Equals [!Ref EnvironmentName,prod]
+  IfRegionUseKeyName: !Or [!Equals [!Ref 'AWS::Region',us-east-1], !Equals [!Ref 'AWS::Region',us-west-1]]
+
+Resources:
+  MyVMInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !FindInMap
+        - MyEnvironmentMap
+        - !Ref EnvironmentName
+        - InstanceType
+      KeyName: !If [IfRegionUseKeyName,laptopkey,us-west-cfn-1]
+      ImageId: !FindInMap
+        - MyRegionMap
+        - !Ref 'AWS::Region'
+        - HVM64
+      SecurityGroups: !If [CreateDevSecurityGroup, [!Ref DevSecurityGroup], [!Ref ProdSecurityGroup]]
+  MyProdEIP:
+    Type: AWS::EC2::EIP
+    Condition: CreateEIPForProd
+    Properties:
+      InstanceId: !Ref MyVMInstance
+
+  DevSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: CreateDevSecurityGroup
+    Properties:
+      GroupDescription: DevSG
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+
+  ProdSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: CreateProdSecurityGroup
+    Properties:
+      GroupDescription: ProdSG
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+      
+

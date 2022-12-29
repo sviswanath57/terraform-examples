@@ -1,0 +1,42 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Avialabilty Zone Parameter Demo
+
+Parameters:
+  MyKeyName:
+    Description: Select the Key name from the list
+    Type: AWS::EC2::KeyPair::KeyName
+  MyAvailabiltyZone:
+    Description: Select the AZ
+    Type: String
+    Default: us-east-1a
+    AllowedValues:
+      - us-east-1a
+      - us-east-1b
+      - us-east-1c
+
+Resources:
+  DevEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      KeyName: !Ref MyKeyName
+      ImageId: ami-0cff7528ff583bf9a
+      SecurityGroups:
+        - default
+        - !Ref SSHSecurityGroup
+      AvailabilityZone: !Ref MyAvailabiltyZone 
+
+  SSHSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: my ssh group
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0
+      
